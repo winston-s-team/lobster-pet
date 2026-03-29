@@ -1,0 +1,143 @@
+.activity-viz { gap: 10px; }
+
+.av-loading {
+  color: var(--text-muted, #555);
+  font-size: 12px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+.av-row1 {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.av-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.av-subtitle {
+  font-size: 10px;
+  color: var(--text-muted, #555);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* === Heatmap === */
+.av-heatmap {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 2px;
+}
+
+.av-cell-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.av-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  min-height: 10px;
+  transition: transform 0.15s;
+}
+
+.av-cell:hover { transform: scale(1.3); }
+.av-today { outline: 1.5px solid var(--accent, #E74C3C); outline-offset: 1px; }
+
+.av-cell-label {
+  font-size: 8px;
+  color: var(--text-muted, #555);
+}
+
+/* === Donut === */
+.av-donut-section { flex: 0 0 auto; }
+
+.av-donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.av-donut {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+}
+
+.av-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.av-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.av-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.av-legend-label {
+  font-size: 10px;
+  color: var(--text-secondary, #888);
+}
+
+.av-legend-val {
+  font-size: 10px;
+  color: var(--text-primary, #eee);
+  font-weight: 600;
+  margin-left: auto;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+/* === Hourly Timeline === */
+.av-timeline {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 48px;
+  padding-top: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.av-hour {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  position: relative;
+}
+
+.av-hour-bar {
+  width: 70%;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(to top, rgba(231, 76, 60, 0.6), rgba(231, 76, 60, 0.3));
+  transition: height 0.3s;
+  min-height: 2px;
+}
+
+.av-hour-now .av-hour-bar {
+  background: linear-gradient(to top, var(--accent, #E74C3C), rgba(231, 76, 60, 0.5));
+  box-shadow: 0 0 6px rgba(231, 76, 60, 0.4);
+}
+
+.av-hour-label {
+  font-size: 7px;
+  color: var(--text-muted, #555);
+  position: absolute;
+  bottom: -14px;
+}

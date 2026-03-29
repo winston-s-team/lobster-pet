@@ -1,0 +1,169 @@
+:root {
+  --bg-primary: #1a1b2e;
+  --bg-card: rgba(30, 32, 55, 0.85);
+  --bg-card-hover: rgba(40, 42, 65, 0.9);
+  --border: rgba(255, 255, 255, 0.08);
+  --text-primary: #eee;
+  --text-secondary: #888;
+  --text-muted: #555;
+  --accent: #E74C3C;
+  --accent-light: rgba(231, 76, 60, 0.15);
+  --success: #2ECC71;
+  --warning: #F39C12;
+  --error: #E74C3C;
+  --info: #4ECDC4;
+  --header-h: 44px;
+  --row-gap: 10px;
+  --pad: 14px;
+}
+
+.office {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+.office-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 var(--pad);
+  -webkit-app-region: drag;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.office-title { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+
+.office-header-actions {
+  display: flex; align-items: center; gap: 4px; -webkit-app-region: no-drag;
+}
+
+.office-refresh, .office-close {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 15px; cursor: pointer; padding: 4px 8px;
+  border-radius: 6px; transition: all 0.2s; line-height: 1;
+}
+.office-refresh:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.office-refresh.is-spinning { animation: spin 0.6s ease; pointer-events: none; }
+.office-close:hover { color: var(--error); background: var(--accent-light); }
+
+/* === Body === */
+.office-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  padding: var(--row-gap) var(--pad);
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Row 1: full width, 3 cols */
+.office-row {
+  display: grid;
+  gap: var(--row-gap);
+  min-height: 0;
+}
+
+.office-row-top {
+  grid-template-columns: 240px 1fr 1.5fr;
+  flex-shrink: 0;
+}
+
+/* Row 2: left stack + MiniOffice */
+.office-row-mid {
+  grid-template-columns: 750px 1fr;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Left stack inside row-mid */
+.office-left-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.office-left-stack::-webkit-scrollbar { width: 3px; }
+.office-left-stack::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Gateway + Cron side by side */
+.office-row-data {
+  grid-template-columns: 1fr 1.4fr;
+  min-height: 340px;
+}
+
+/* === Card === */
+.card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.card:hover { background: var(--bg-card-hover); }
+
+.card-scroll {
+  flex: 1; overflow-y: auto; min-height: 0;
+}
+.card-scroll::-webkit-scrollbar { width: 4px; }
+.card-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.section-title {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  margin-bottom: 6px; flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .office-row, .office-row-top, .office-row-mid, .office-row-data {
+    grid-template-columns: 1fr;
+  }
+  .office-body { overflow-y: auto; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Loading overlay */
+.office-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 27, 46, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.office-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.office.is-loading {
+  pointer-events: none;
+}

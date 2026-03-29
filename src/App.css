@@ -1,0 +1,24 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: transparent;
+  overflow: hidden;
+  font-family: -apple-system, 'SF Pro Display', 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 150px;
+  height: 150px;
+}
+
+/* Detail panel needs full viewport */
+#root.detail-root {
+  width: 100vw;
+  height: 100vh;
+}

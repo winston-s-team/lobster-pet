@@ -1,0 +1,111 @@
+.cron-list { gap: 0; }
+
+.cron-empty {
+  color: var(--text-muted, #555);
+  font-size: 12px;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.cron-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cron-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+
+.cron-item:hover { background: rgba(255, 255, 255, 0.06); }
+
+.cron-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  min-width: 32px;
+  flex-shrink: 0;
+}
+
+.cron-emoji {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.cron-name {
+  font-size: 12px;
+  color: #ccc;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cron-last-run {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.cron-countdown {
+  font-size: 11px;
+  color: var(--info, #4ECDC4);
+  background: rgba(78, 205, 196, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cron-countdown.cron-expired {
+  color: var(--text-muted, #555);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cron-oneshot-badge {
+  font-size: 11px;
+  color: var(--warning, #F39C12);
+  background: rgba(243, 156, 18, 0.12);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.cron-oneshot {
+  border-left: 2px solid rgba(243, 156, 18, 0.3);
+}
+
+.cron-disabled {
+  opacity: 0.4;
+}
+
+.cron-off-badge {
+  font-size: 11px;
+  color: var(--text-muted, #555);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.cron-expired-toggle {
+  font-size: 11px;
+  color: var(--text-muted, #666);
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+
+.cron-expired-toggle:hover {
+  color: var(--text-secondary, #888);
+  background: rgba(255, 255, 255, 0.04);
+}

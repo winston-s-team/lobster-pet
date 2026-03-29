@@ -1,0 +1,1411 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobster Office</title>
+    <style>
+        @font-face {
+            font-family: 'ArkPixel';
+            src: url('./fonts/ark-pixel-12px-proportional-zh_cn.ttf.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'ArkPixel', 'Courier New', monospace;
+            padding: 0;
+            gap: 0;
+        }
+        #main-stage {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform .25s ease;
+            will-change: transform;
+        }
+        #game-container {
+            position: relative;
+            border: 0;
+            image-rendering: pixelated;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            aspect-ratio: auto;
+            overflow: hidden;
+        }
+        #game-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            image-rendering: pixelated;
+            object-fit: contain;
+            box-shadow: inset 0 0 0 4px #64477d;
+            position: relative;
+            z-index: 10;
+        }
+        #status-text {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            transform: none;
+            color: #eee;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            max-width: calc(100% - 24px);
+            text-align: left;
+            font-family: 'ArkPixel', 'Courier New', monospace;
+            z-index: 30;
+            pointer-events: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+        /* 手机端专属适配（不影响桌面） */
+        @media (max-width: 900px), (pointer: coarse) {
+            html, body {
+                height: 100%;
+            }
+            body {
+                padding: 0;
+                gap: 0;
+                overflow-x: auto;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                align-items: stretch;
+            }
+            #game-container {
+                width: 100vw;
+                height: 66.666vh;
+                max-width: 100vw;
+                max-height: 66.666vh;
+                border-width: 0;
+                border-radius: 0;
+                aspect-ratio: auto;
+                flex: 0 0 auto;
+                touch-action: auto;
+                overflow: hidden;
+            }
+            #main-stage {
+                width: 100vw;
+                min-width: 0;
+                margin-left: 0 !important;
+            }
+            #status-text {
+                bottom: 8px;
+                left: 8px;
+                max-width: 64vw;
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+            #pan-toggle {
+                font-size: 12px !important;
+                padding: 6px 8px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="main-stage">
+        <div id="game-container">
+            <div id="status-text">加载中...</div>
+        </div>
+    </div>
+    <button id="pan-toggle" style="position:fixed; top:calc(env(safe-area-inset-top, 0px) + 12px); left:12px; z-index:999999; padding:8px 10px; font-family:ArkPixel,monospace; font-size:13px; cursor:pointer; border:2px solid #333; border-radius:5px; background:#333; color:#fff;">
+        移动视野
+    </button>
+
+    <script>
+        // Stub all Flask API calls — pure frontend mode, no backend
+        const _origFetch = window.fetch;
+        window.fetch = async function(url, opts) {
+            const u = String(url);
+            if (u.startsWith('/assets/') || u.startsWith('/config/') || u.startsWith('/agents') || u.startsWith('/guest-agents') || u.startsWith('/yesterday-memo') || u.startsWith('/status') || u.startsWith('/set_state') || u.startsWith('/leave-agent') || u.startsWith('/agent-approve') || u.startsWith('/agent-reject')) {
+                return new Response(JSON.stringify({ok: false, stub: true}), {status: 200, headers: {'Content-Type': 'application/json'}});
+            }
+            return _origFetch.call(this, url, opts);
+        };
+    </script>
+    <script src="./vendor/phaser-3.80.1.min.js?v=1"></script>
+    <script>
+        // I18N data
+        let uiLang = localStorage.getItem('uiLang') || 'en';
+        const I18N = {
+            zh: {
+                controlTitle: 'Star 状态',
+                btnIdle: '待命', btnWork: '工作', btnSync: '同步', btnError: '报警', btnDecor: '装修房间',
+                showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
+                memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '???的办公室',
+                loadingOffice: '正在加载 Star 的像素办公室...'
+            },
+            en: {
+                controlTitle: 'Star Status',
+                btnIdle: 'Idle', btnWork: 'Work', btnSync: 'Sync', btnError: 'Alert', btnDecor: 'Decorate Room',
+                showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
+                memoTitle: 'YESTERDAY NOTES', guestTitle: 'VISITOR LIST', officeTitle: 'Haixin Lobster Office',
+                loadingOffice: 'Loading Star\'s pixel office...'
+            },
+            ja: {
+                controlTitle: 'Star ステータス',
+                btnIdle: '待機', btnWork: '作業', btnSync: '同期', btnError: '警報', btnDecor: '部屋を編集',
+                showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
+                memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
+                loadingOffice: 'Star のピクセルオフィスを読み込み中...'
+            }
+        };
+
+        function t(key) { return (I18N[uiLang] && I18N[uiLang][key]) || key; }
+
+        const IS_TOUCH_DEVICE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+
+        const config = {
+            type: Phaser.AUTO,
+            width: 1280,
+            height: 720,
+            parent: 'game-container',
+            pixelArt: true,
+            scale: {
+                mode: IS_TOUCH_DEVICE ? Phaser.Scale.RESIZE : Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                width: 1280,
+                height: 720
+            },
+            physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+            scene: { preload: preload, create: create, update: update }
+        };
+
+        const STATES = {
+            idle: { name: '待命', area: 'breakroom' },
+            writing: { name: '整理文档', area: 'writing' },
+            researching: { name: '搜索信息', area: 'researching' },
+            executing: { name: '执行任务', area: 'writing' },
+            syncing: { name: '同步备份', area: 'writing' },
+            error: { name: '出错了', area: 'error' }
+        };
+
+        const BUBBLE_TEXTS = {
+            zh: {
+                idle: ['待命中：耳朵竖起来了','我在这儿，随时可以开工','先把桌面收拾干净再说','呼——给大脑放个风','今天也要优雅地高效','等待，是为了更准确的一击','咖啡还热，灵感也还在','我在后台给你加 Buff','状态：静心 / 充电','小猫说：慢一点也没关系'],
+                writing: ['进入专注模式：勿扰','先把关键路径跑通','我来把复杂变简单','把 bug 关进笼子里','写到一半，先保存','把每一步都做成可回滚','今天的进度，明天的底气','先收敛，再发散','让系统变得更可解释','稳住，我们能赢'],
+                researching: ['我在挖证据链','让我把信息熬成结论','找到了：关键在这里','先把变量控制住','我在查：它为什么会这样','把直觉写成验证','先定位，再优化','别急，先画因果图'],
+                executing: ['执行中：不要眨眼','把任务切成小块逐个击破','开始跑 pipeline','一键推进：走你','让结果自己说话','先做最小可行，再做最美版本'],
+                syncing: ['同步中：把今天锁进云里','备份不是仪式，是安全感','写入中…别断电','把变更交给时间戳','云端对齐：咔哒','同步完成前先别乱动','把未来的自己从灾难里救出来','多一份备份，少一份后悔'],
+                error: ['警报响了：先别慌','我闻到 bug 的味道了','先复现，再谈修复','把日志给我，我会说人话','错误不是敌人，是线索','把影响面圈起来','先止血，再手术','我在：马上定位根因','别怕，这种我见多了','报警中：让问题自己现形'],
+                cat: ['喵~','咕噜咕噜…','尾巴摇一摇','晒太阳最开心','有人来看我啦','我是这个办公室的吉祥物','伸个懒腰','今天的罐罐准备好了吗','呼噜呼噜','这个位置视野最好']
+            },
+            en: {
+                idle: ['On standby: ears up.','I\'m here, ready to roll.','Let\'s tidy the desk first.','Taking a quick brain breeze.','Efficient and elegant, as always.','Waiting for a more precise strike.','Coffee is warm, ideas too.','Giving you a quiet backstage buff.','Status: calm / charging.','Cat says: no rush, we\'re good.'],
+                writing: ['Focus mode on: do not disturb.','Let\'s clear the critical path first.','I\'ll make the complex simple.','Putting bugs in a cage.','Save first, then continue.','Every step should be rollback-safe.','Today\'s progress is tomorrow\'s confidence.','Converge first, then diverge.','Making the system more explainable.','Steady—this is winnable.'],
+                researching: ['Digging the evidence chain.','Let me boil info into conclusions.','Found it: key clue here.','Control variables first.','Checking why this happens.','Turn intuition into verification.','Locate first, optimize next.','No rush—draw the causality map first.'],
+                executing: ['Executing—don\'t blink.','Split tasks, conquer one by one.','Pipeline is running.','One-click push: go go.','Let the results speak.','Build MVP first, then craft beauty.'],
+                syncing: ['Syncing: lock today into the cloud.','Backup is safety, not ceremony.','Writing… don\'t cut power.','Handing changes to timestamps.','Cloud alignment: click.','Don\'t shake it before sync finishes.','Saving future-us from disasters.','One more backup, one less regret.'],
+                error: ['Alarm on—stay calm.','I can smell a bug.','Reproduce first, then fix.','Give me logs; I\'ll translate.','Errors are clues, not enemies.','Circle the impact area first.','Stop the bleeding, then surgery.','On it: tracing root cause now.','Don\'t worry, seen this many times.','Alert mode: make the issue reveal itself.'],
+                cat: ['Meow~','Purr purr…','Tail wiggle activated.','Sunbathing is the best.','Someone came to see me!','I\'m the office mascot.','Big stretch~','Is today\'s snack ready yet?','Rrrrr purr…','Best view spot secured.']
+            },
+            ja: {
+                idle: ['待機中：耳はピン。','ここにいるよ、いつでも開始OK。','まず机を整えよう。','ふー、頭に風を通す。','今日も上品に高効率で。','待つのは、より正確な一撃のため。','コーヒーも発想もまだ温かい。','裏側でそっとバフ中。','状態：静心 / 充電。','猫より：ゆっくりでも大丈夫。'],
+                writing: ['集中モード：お静かに。','まずはクリティカルパスを通す。','複雑をシンプルにする。','バグはケージへ。','途中でもまず保存。','すべてをロールバック可能に。','今日の進捗は明日の自信。','まず収束、次に発散。','システムをより説明可能に。','落ち着いて、勝てる。'],
+                researching: ['証拠チェーンを掘っています。','情報を結論まで煮詰めます。','見つけた：鍵はここ。','まず変数を制御。','なぜこうなるか調査中。','直感を検証へ。','先に特定、次に最適化。','急がず因果マップから。'],
+                executing: ['実行中：まばたき厳禁。','タスクを分割して各個撃破。','パイプライン起動。','ワンクリック前進：いくぞ。','結果に語らせる。','まず最小実用、次に美しさ。'],
+                syncing: ['同期中：今日をクラウドに封印。','バックアップは儀式じゃなく安心。','書き込み中…電源オフ厳禁。','変更はタイムスタンプへ。','クラウド整列：カチッ。','同期完了まで触らないで。','未来の自分を災害から救う。','バックアップ一つ、後悔一つ減る。'],
+                error: ['警報：まず落ち着いて。','バグの気配を感じる。','再現してから修正へ。','ログをください、人語にします。','エラーは敵ではなく手がかり。','まず影響範囲を囲う。','止血してから手術。','今すぐ根因を追跡中。','大丈夫、よくある案件。','警戒モード：問題を可視化する。'],
+                cat: ['ニャー','ゴロゴロ…','しっぽフリフリ。','ひなたぼっこ最高。','見に来てくれた！','このオフィスのマスコットです。','ぐーっと伸び。','今日のおやつ、準備できた？','ゴロゴロ。','ここ、いちばん見晴らしがいい。']
+            }
+        };
+
+        // Game state
+        let game, star, sofa, serverroom, officeBgSprite, areas = {}, currentState = 'idle', pendingDesiredState = null, statusText, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, syncAnimPlayable = false;
+        const IDLE_SOFA_ANCHOR = { x: 798, y: 272 };
+        const IDLE_STAR_SCALE = 1.0;
+        let FLOWERS_FRAME_W = 65;
+        let FLOWERS_FRAME_H = 65;
+        let FLOWERS_FRAME_COLS = 4;
+        let FLOWERS_FRAME_ROWS = 4;
+        let currentOfficeBgTextureKey = 'office_bg';
+        let isMoving = false;
+        let waypoints = [];
+        let lastWanderAt = 0;
+
+        // Guest state
+        let guestAgents = [];
+        let guestSprites = {};
+        let guestBubbles = {};
+        const GUEST_AVATARS = ['guest_role_1','guest_role_2','guest_role_3','guest_role_4','guest_role_5','guest_role_6'];
+        let guestTweens = {};
+        let hiddenDemoNames = new Set();
+        const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') === '1';
+        const BLINK_INTERVAL = 2500;
+        const BUBBLE_INTERVAL = 8000;
+        const CAT_BUBBLE_INTERVAL = 18000;
+        let lastCatBubble = 0;
+        let lastGuestBubbleAt = 0;
+        const TYPEWRITER_DELAY = 50;
+        let lastSeenGuestIds = new Set();
+        let guestWelcomeInitialized = false;
+
+        // Area helpers
+        function getAreaRect(area) {
+            const rects = {
+                breakroom: { x1: 511, y1: 262, x2: 841, y2: 621 },
+                writing:   { x1: 190, y1: 526, x2: 380, y2: 683 },
+                error:     { x1: 932, y1: 275, x2: 1109, y2: 327 }
+            };
+            return rects[area] || rects.breakroom;
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function randomPointInRect(rect) {
+            return { x: randomInt(rect.x1, rect.x2), y: randomInt(rect.y1, rect.y2) };
+        }
+
+        function getAreaPoint(area, idx) {
+            const map = {
+                breakroom: [
+                    { x: 511, y: 262 }, { x: 841, y: 621 }, { x: 690, y: 470 },
+                    { x: 600, y: 340 }, { x: 770, y: 540 }, { x: 550, y: 420 },
+                    { x: 720, y: 310 }, { x: 650, y: 580 }
+                ],
+                writing: [
+                    { x: 190, y: 526 }, { x: 380, y: 683 }, { x: 300, y: 610 },
+                    { x: 240, y: 570 }, { x: 350, y: 640 }, { x: 160, y: 600 },
+                    { x: 420, y: 560 }, { x: 280, y: 660 }
+                ],
+                error: [
+                    { x: 932, y: 275 }, { x: 1109, y: 327 }, { x: 1020, y: 305 },
+                    { x: 960, y: 340 }, { x: 1070, y: 280 }, { x: 990, y: 260 },
+                    { x: 1050, y: 350 }, { x: 940, y: 310 }
+                ]
+            };
+            const arr = map[area] || map.breakroom;
+            return arr[idx % arr.length];
+        }
+
+        // Guest functions
+        function ensureDemoVisitors() {
+            if (!DEMO_MODE) return;
+            if (!Array.isArray(window.__demoVisitors) || window.__demoVisitors.length === 0) {
+                window.__demoVisitors = [
+                    { agentId: 'demo_nika', name: '尼卡', authStatus: 'approved', state: 'writing', bubbleText: '我在工作中', isDemo: true, updated_at: new Date().toISOString() },
+                    { agentId: 'demo_mercury', name: '水星', authStatus: 'approved', state: 'idle', bubbleText: '我去休息区躺一下', isDemo: true, updated_at: new Date().toISOString() }
+                ];
+            }
+        }
+
+        function getMergedVisitors() {
+            const realVisitors = (guestAgents || []).filter(a => !a.isMain);
+            if (!DEMO_MODE) return realVisitors;
+            ensureDemoVisitors();
+            const demoVisitors = window.__demoVisitors.filter(v => !hiddenDemoNames.has(v.name));
+            return [...realVisitors, ...demoVisitors];
+        }
+
+        function renderGuestAgentsInScene() {
+            if (!game) return;
+            const visitors = getMergedVisitors();
+            const seenIds = new Set();
+            let idxBreak = 0, idxWrite = 0, idxError = 0;
+
+            visitors.forEach(agent => {
+                const id = agent.agentId;
+                seenIds.add(id);
+
+                const isDemo = !!agent.isDemo || (DEMO_MODE && (id === 'demo_nika' || id === 'demo_mercury' || agent.name === '尼卡' || agent.name === '水星'));
+                const area = agent.area || (agent.state === 'error' ? 'error' : (agent.state === 'idle' ? 'breakroom' : 'writing'));
+
+                const idx = area === 'breakroom' ? idxBreak++ : area === 'error' ? idxError++ : idxWrite++;
+                const p = isDemo
+                    ? randomPointInRect(getAreaRect(area))
+                    : getAreaPoint(area, idx);
+
+                if (!guestSprites[id]) {
+                    let sprite;
+                    const isDemoNika = DEMO_MODE && (agent.agentId === 'demo_nika' || agent.name === '尼卡');
+                    const isDemoMercury = DEMO_MODE && (agent.agentId === 'demo_mercury' || agent.name === '水星');
+                    
+                    if (isDemoNika || isDemoMercury) {
+                        const animKey = 'guest_anim_1';
+                        sprite = game.add.sprite(p.x, p.y, animKey, 0).setOrigin(0.5, 1).setScale(1.1);
+                        if (sprite.anims && sprite.anims.play) sprite.anims.play(animKey, true);
+                    } else {
+                        let animIdx = agent.avatar
+                            ? parseInt((agent.avatar.match(/_(\d+)$/) || [])[1] || '0', 10)
+                            : 0;
+                        if (!animIdx || animIdx < 1 || animIdx > 6) {
+                            const aid = String(agent.agentId || '');
+                            let hash = 0;
+                            for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
+                            animIdx = (hash % 6) + 1;
+                        }
+                        const animKey = `guest_anim_${animIdx}`;
+                        const animIdleKey = `guest_anim_${animIdx}_idle`;
+
+                        if (game.textures.exists(animKey) && game.anims.exists(animIdleKey)) {
+                            sprite = game.add.sprite(p.x, p.y, animKey).setOrigin(0.5, 1).setScale(4.0);
+                            sprite.anims.play(animIdleKey, true);
+                        } else {
+                            const staticAvatarKey = agent.avatar && game.textures.exists(agent.avatar)
+                                ? agent.avatar
+                                : (() => {
+                                    const aid = String(agent.agentId || '');
+                                    let hash = 0;
+                                    for (let i = 0; i < aid.length; i++) hash = (hash * 31 + aid.charCodeAt(i)) >>> 0;
+                                    return GUEST_AVATARS[hash % GUEST_AVATARS.length];
+                                })();
+
+                            if (staticAvatarKey && game.textures.exists(staticAvatarKey)) {
+                                sprite = game.add.image(p.x, p.y, staticAvatarKey).setOrigin(0.5, 1).setScale(1.15);
+                            } else {
+                                sprite = game.add.text(p.x, p.y, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '30px' }).setOrigin(0.5, 1);
+                            }
+                        }
+                    }
+                    sprite.setDepth(2600);
+                    if (DEMO_MODE && (agent.agentId === 'demo_mercury' || agent.name === '水星')) {
+                        sprite.y = sprite.y + 10;
+                    }
+
+                    const yOffset = (DEMO_MODE && (agent.agentId === 'demo_mercury' || agent.name === '水星')) ? 10 : 0;
+                    const nameTextY = isDemo ? ((p.y + yOffset) - 80) : ((p.y + yOffset) - 120);
+                    const nameText = game.add.text(p.x, nameTextY, agent.name || '访客', {
+                        fontFamily: 'ArkPixel, monospace',
+                        fontSize: isDemo ? '16px' : '15px',
+                        fill: '#ffffff',
+                        stroke: '#000',
+                        strokeThickness: 3
+                    }).setOrigin(0.5);
+                    nameText.setDepth(2601);
+
+                    guestSprites[id] = { sprite, nameText };
+                } else {
+                    const g = guestSprites[id];
+                    const yOffset = (DEMO_MODE && (agent.agentId === 'demo_mercury' || agent.name === '水星')) ? 10 : 0;
+
+                    if (isDemo) {
+                        if (guestTweens[id] && guestTweens[id].move) {
+                            guestTweens[id].move.stop();
+                        }
+                        if (guestTweens[id] && guestTweens[id].name) {
+                            guestTweens[id].name.stop();
+                        }
+
+                        const duration = 2000 + Math.floor(Math.random() * 1000);
+                        const ease = 'Sine.easeInOut';
+
+                        const moveTween = game.tweens.add({
+                            targets: g.sprite,
+                            x: p.x,
+                            y: p.y + yOffset,
+                            duration,
+                            ease
+                        });
+                        const nameTween = game.tweens.add({
+                            targets: g.nameText,
+                            x: p.x,
+                            y: (p.y + yOffset) - 80,
+                            duration,
+                            ease
+                        });
+                        guestTweens[id] = { move: moveTween, name: nameTween };
+                    } else {
+                        g.sprite.x = p.x;
+                        g.sprite.y = p.y + yOffset;
+                        g.nameText.x = p.x;
+                        g.nameText.y = (p.y + yOffset) - 120;
+                    }
+
+                    g.nameText.setText(agent.name || '访客');
+                }
+            });
+
+            // Clean up removed agents
+            Object.keys(guestSprites).forEach(id => {
+                if (!seenIds.has(id)) {
+                    guestSprites[id].sprite.destroy();
+                    guestSprites[id].nameText.destroy();
+                    delete guestSprites[id];
+                    if (guestBubbles[id]) {
+                        guestBubbles[id].destroy();
+                        delete guestBubbles[id];
+                    }
+                    if (guestTweens[id]) {
+                        try { guestTweens[id].move && guestTweens[id].move.stop(); } catch(e) {}
+                        try { guestTweens[id].name && guestTweens[id].name.stop(); } catch(e) {}
+                        delete guestTweens[id];
+                    }
+                }
+            });
+        }
+
+        function maybeShowGuestBubble(time) {
+            if (time - lastGuestBubbleAt < 5200) return;
+            lastGuestBubbleAt = time;
+            const ids = Object.keys(guestSprites);
+            if (ids.length === 0) return;
+            const id = ids[Math.floor(Math.random() * ids.length)];
+            const g = guestSprites[id];
+
+            const demoVisitor = (DEMO_MODE && window.__demoVisitors)
+                ? (window.__demoVisitors.find(v => v.agentId === id) || window.__demoVisitors.find(v => v.name === (g.nameText && g.nameText.text)))
+                : null;
+
+            const statusThoughtsMap = {
+                idle: ['我在休息区待命', '先放松一下，等下一步任务', '我在休息充电中'],
+                writing: ['我在工作区处理任务', '正在整理文档与执行中', '工作区专注推进中'],
+                researching: ['我在调研模式，搜集信息', '正在查资料和验证线索', '研究中，稍后同步结论'],
+                executing: ['执行中，正在跑流程', '我在工作区推进任务', '正在把计划落地执行'],
+                syncing: ['同步中，马上更新状态', '正在同步进度到系统', '数据同步中请稍候'],
+                error: ['我在 bug 区排查问题', '检测到异常，正在修复', '报警中，先定位再处理']
+            };
+            const agentState = (guestAgents.find(a => a.agentId === id) || {}).state || 'idle';
+            const thoughts = statusThoughtsMap[agentState] || statusThoughtsMap.idle;
+            const text = (demoVisitor && demoVisitor.bubbleText) ? demoVisitor.bubbleText : thoughts[Math.floor(Math.random() * thoughts.length)];
+
+            if (guestBubbles[id]) {
+                guestBubbles[id].destroy();
+                delete guestBubbles[id];
+            }
+
+            const bx = g.sprite.x;
+            const isDemoGuest = (demoVisitor && demoVisitor.isDemo) || (id === 'demo_nika' || id === 'demo_mercury');
+            const nameH = (g.nameText && g.nameText.height) ? g.nameText.height : 16;
+            const by = isDemoGuest ? (g.sprite.y - 90) : ((g.nameText ? g.nameText.y : (g.sprite.y - 150)) - (nameH / 2) - 22);
+            const fontSize = IS_TOUCH_DEVICE ? 14 : 12;
+            const bg = game.add.rectangle(bx, by, text.length * 10 + 24, 28, 0xffffff, 0.95);
+            bg.setStrokeStyle(2, 0x000000);
+            const txt = game.add.text(bx, by, text, { fontFamily: 'ArkPixel, monospace', fontSize: fontSize + 'px', fill: '#000' }).setOrigin(0.5);
+            const bubble = game.add.container(0, 0, [bg, txt]);
+            bubble.setDepth(2700);
+            guestBubbles[id] = bubble;
+            bubble.__followAgentId = id;
+
+            setTimeout(() => {
+                if (guestBubbles[id]) {
+                    guestBubbles[id].destroy();
+                    delete guestBubbles[id];
+                }
+            }, 3200);
+        }
+
+        function maybeRandomizeDemoVisitors() {
+            if (!DEMO_MODE) return;
+            ensureDemoVisitors();
+
+            window.__demoNextAt = window.__demoNextAt || 0;
+            const now = Date.now();
+            if (now < window.__demoNextAt) return;
+            window.__demoNextAt = now + 8000;
+
+            const states = ['idle', 'writing', 'researching', 'executing', 'syncing', 'error'];
+            const bubbleTextMapByLang = {
+                zh: {
+                    idle: '我去休息区躺一下',
+                    writing: '我在工作中',
+                    researching: '我在调研中',
+                    executing: '我在执行任务',
+                    syncing: '我在同步状态',
+                    error: '出错了！我去报警区'
+                },
+                en: {
+                    idle: 'Taking a break in the lounge.',
+                    writing: 'I am working now.',
+                    researching: 'I am researching now.',
+                    executing: 'I am executing tasks.',
+                    syncing: 'I am syncing status.',
+                    error: 'Something broke! Heading to alert zone.'
+                },
+                ja: {
+                    idle: '休憩エリアでひと休み。',
+                    writing: '作業中です。',
+                    researching: '調査中です。',
+                    executing: 'タスクを実行中です。',
+                    syncing: '状態を同期中です。',
+                    error: 'エラー発生！アラートエリアへ。'
+                }
+            };
+            const bubbleTextMap = bubbleTextMapByLang[uiLang] || bubbleTextMapByLang.zh;
+
+            const pickJs = (exclude) => {
+                let s = states[Math.floor(Math.random() * states.length)];
+                let tries = 0;
+                while (exclude && s === exclude && tries < 5) {
+                    s = states[Math.floor(Math.random() * states.length)];
+                    tries++;
+                }
+                return s;
+            };
+
+            const current = window.__demoVisitors || [];
+            const cur0 = current[0] ? (current[0].state || 'idle') : 'idle';
+            const next0 = pickJs(cur0);
+            const next1 = pickJs(next0);
+            const nextStates = [next0, next1];
+
+            const prevVisitors = current.map((v) => ({ ...v }));
+            window.__demoVisitors = current.map((v, i) => {
+                const nextState = nextStates[i] || pickJs(v.state);
+                return {
+                    ...v,
+                    state: nextState,
+                    bubbleText: bubbleTextMap[nextState] || String(nextState),
+                    updated_at: new Date().toISOString()
+                };
+            });
+
+            // Force bubble on state change
+            try {
+                if (typeof game !== 'undefined' && game) {
+                    const prevById = {};
+                    prevVisitors.forEach(v => { prevById[v.agentId] = v; });
+                    const newVisitors = window.__demoVisitors || [];
+                    newVisitors.forEach(agent => {
+                        const prev = prevById[agent.agentId];
+                        const changed = !prev || prev.state !== agent.state;
+                        if (changed) {
+                            if (guestSprites[agent.agentId]) {
+                                const g = guestSprites[agent.agentId];
+                                const text = agent.bubbleText || '';
+                                if (guestBubbles[agent.agentId]) {
+                                    guestBubbles[agent.agentId].destroy();
+                                    delete guestBubbles[agent.agentId];
+                                }
+                                const bx = g.sprite.x;
+                                const by = g.sprite.y - 90;
+                                const fontSize = IS_TOUCH_DEVICE ? 14 : 12;
+                                const bg = game.add.rectangle(bx, by, text.length * 10 + 24, 28, 0xffffff, 0.95);
+                                bg.setStrokeStyle(2, 0x000000);
+                                const txt = game.add.text(bx, by, text, { fontFamily: 'ArkPixel, monospace', fontSize: fontSize + 'px', fill: '#000' }).setOrigin(0.5);
+                                const bubble = game.add.container(0, 0, [bg, txt]);
+                                bubble.setDepth(2700);
+                                bubble.__followAgentId = agent.agentId;
+                                guestBubbles[agent.agentId] = bubble;
+                                setTimeout(() => {
+                                    if (guestBubbles[agent.agentId]) {
+                                        guestBubbles[agent.agentId].destroy();
+                                        delete guestBubbles[agent.agentId];
+                                    }
+                                }, 3200);
+                            }
+                        }
+                    });
+                    // Re-render guest sprites when demo state changes
+                    renderGuestAgentsInScene();
+                }
+            } catch (e) { console.error('强制冒泡失败:', e); }
+        }
+
+        // State management
+        function normalizeState(s) {
+            if (!s) return 'idle';
+            if (s === 'working') return 'writing';
+            if (s === 'run' || s === 'running') return 'executing';
+            if (s === 'sync') return 'syncing';
+            if (s === 'research') return 'researching';
+            return s;
+        }
+
+        function applyVisualState(nextState) {
+            if (nextState === 'idle') {
+                sofa.anims.stop();
+                sofa.setTexture('sofa_idle');
+                if (window.starWorking) {
+                    window.starWorking.setVisible(false);
+                    window.starWorking.anims.stop();
+                }
+                star.setVisible(true);
+                star.setScale(IDLE_STAR_SCALE);
+                star.anims.play('star_idle', true);
+                star.setPosition(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y);
+            } else if (nextState === 'error') {
+                sofa.anims.stop();
+                sofa.setTexture('sofa_idle');
+                star.setVisible(false);
+                star.anims.stop();
+                if (window.starWorking) {
+                    window.starWorking.setVisible(false);
+                    window.starWorking.anims.stop();
+                }
+            } else if (nextState === 'syncing') {
+                sofa.anims.stop();
+                sofa.setTexture('sofa_idle');
+                star.setVisible(false);
+                star.anims.stop();
+                if (window.starWorking) {
+                    window.starWorking.setVisible(false);
+                    window.starWorking.anims.stop();
+                }
+            } else {
+                sofa.anims.stop();
+                sofa.setTexture('sofa_idle');
+                star.setVisible(false);
+                star.anims.stop();
+                if (window.starWorking) {
+                    window.starWorking.setVisible(true);
+                    window.starWorking.anims.play('star_working', true);
+                }
+            }
+
+            // Server room logic
+            if (serverroom) {
+                if (nextState === 'idle') {
+                    serverroom.anims.stop();
+                    serverroom.setFrame(0);
+                } else {
+                    serverroom.anims.play('serverroom_on', true);
+                }
+            }
+
+            // Sync animation logic
+            if (syncAnimSprite) {
+                if (nextState === 'syncing') {
+                    if (syncAnimPlayable && syncAnimSprite.anims && syncAnimSprite.anims.play && syncAnimSprite.scene?.anims?.exists('sync_anim')) {
+                        if (!syncAnimSprite.anims.isPlaying || syncAnimSprite.anims.currentAnim?.key !== 'sync_anim') {
+                            syncAnimSprite.anims.play('sync_anim', true);
+                        }
+                    } else {
+                        syncAnimSprite.setFrame(0);
+                    }
+                } else {
+                    if (syncAnimSprite.anims && syncAnimSprite.anims.isPlaying) syncAnimSprite.anims.stop();
+                    syncAnimSprite.setFrame(0);
+                }
+            }
+        }
+
+        function fetchStatus() {
+            // No-op: status pushed via postMessage from parent
+        }
+
+        function getBubbleTextsByState(stateKey) {
+            const langPack = BUBBLE_TEXTS[uiLang] || BUBBLE_TEXTS.zh;
+            return langPack[stateKey] || langPack.idle || [];
+        }
+
+        function showBubble() {
+            if (bubble) { bubble.destroy(); bubble = null; }
+            const texts = getBubbleTextsByState(currentState);
+            if (currentState === 'idle') return;
+
+            let anchorX = star.x;
+            let anchorY = star.y;
+            if (currentState === 'syncing' && syncAnimSprite && syncAnimSprite.visible) {
+                anchorX = syncAnimSprite.x;
+                anchorY = syncAnimSprite.y;
+            } else if (currentState === 'error' && window.errorBug && window.errorBug.visible) {
+                anchorX = window.errorBug.x;
+                anchorY = window.errorBug.y;
+            } else if (!star.visible && window.starWorking && window.starWorking.visible) {
+                anchorX = window.starWorking.x;
+                anchorY = window.starWorking.y;
+            }
+
+            const text = texts[Math.floor(Math.random() * texts.length)];
+            const bubbleOffsetY = (currentState === 'writing') ? 85 : 70;
+            const bubbleY = anchorY - bubbleOffsetY;
+
+            const isTouch = IS_TOUCH_DEVICE;
+            const fontSize = isTouch ? 14 : 12;
+            const bg = game.add.rectangle(anchorX, bubbleY, text.length * 10 + 20, 28, 0xffffff, 0.95);
+            bg.setStrokeStyle(2, 0x000000);
+            const txt = game.add.text(anchorX, bubbleY, text, { fontFamily: 'ArkPixel, monospace', fontSize: fontSize + 'px', fill: '#000', align: 'center' }).setOrigin(0.5);
+            bubble = game.add.container(0, 0, [bg, txt]);
+            bubble.setDepth(1200);
+            setTimeout(() => { if (bubble) { bubble.destroy(); bubble = null; } }, 3000);
+        }
+
+        function showCatBubble() {
+            if (!window.catSprite) return;
+            if (window.catBubble) { window.catBubble.destroy(); window.catBubble = null; }
+            const texts = getBubbleTextsByState('cat');
+            const text = texts[Math.floor(Math.random() * texts.length)];
+            const anchorX = window.catSprite.x;
+            const anchorY = window.catSprite.y - 60;
+            const bg = game.add.rectangle(anchorX, anchorY, text.length * 10 + 20, 24, 0xfffbeb, 0.95);
+            bg.setStrokeStyle(2, 0xd4a574);
+            const txt = game.add.text(anchorX, anchorY, text, { fontFamily: 'ArkPixel, monospace', fontSize: '11px', fill: '#8b6914', align: 'center' }).setOrigin(0.5);
+            window.catBubble = game.add.container(0, 0, [bg, txt]);
+            window.catBubble.setDepth(2100);
+            setTimeout(() => { if (window.catBubble) { window.catBubble.destroy(); window.catBubble = null; } }, 4000);
+        }
+
+        // Status text positioning helper
+        function positionStatusText() {
+            const canvasEl = game?.canvas || document.querySelector('#game-container canvas');
+            const fallbackBox = document.getElementById('game-container');
+            const rect = canvasEl?.getBoundingClientRect?.() || fallbackBox?.getBoundingClientRect?.();
+
+            const st = document.getElementById('status-text');
+            const gameContainer = document.getElementById('game-container');
+            if (st && gameContainer) {
+                if (rect && rect.width > 0 && rect.height > 0) {
+                    const localLeft = Math.max(8, Math.round(rect.left - gameContainer.getBoundingClientRect().left + 14));
+                    const localBottom = 14;
+                    st.style.left = localLeft + 'px';
+                    st.style.bottom = localBottom + 'px';
+                    st.style.maxWidth = Math.max(120, Math.floor(rect.width - 28)) + 'px';
+                } else {
+                    st.style.left = '14px';
+                    st.style.bottom = '14px';
+                    st.style.maxWidth = 'calc(100% - 28px)';
+                }
+            }
+        }
+
+        function preload() {
+            this.load.image('office_bg', './office_bg_small.webp?v=1');
+            this.load.spritesheet('star_idle', './star-idle-v5.png?v=1', { frameWidth: 256, frameHeight: 256 });
+
+            // Furniture
+            this.load.image('sofa_idle', './sofa-idle-v3.png?v=1');
+            this.load.image('sofa_shadow', './sofa-shadow-v1.png?v=1');
+
+            // Decor
+            this.load.spritesheet('plants', './plants-spritesheet.webp?v=1', { frameWidth: 160, frameHeight: 160 });
+            this.load.spritesheet('posters', './posters-spritesheet.webp?v=1', { frameWidth: 160, frameHeight: 160 });
+            this.load.spritesheet('coffee_machine', './coffee-machine-v3-grid.webp?v=1', { frameWidth: 230, frameHeight: 230 });
+            this.load.image('coffee_machine_shadow', './coffee-machine-shadow-v1.png?v=1');
+            this.load.spritesheet('serverroom', './serverroom-spritesheet.webp?v=1', { frameWidth: 180, frameHeight: 251 });
+
+            // Error / bug animation
+            this.load.spritesheet('error_bug', './error-bug-spritesheet-grid.webp?v=1', { frameWidth: 220, frameHeight: 220 });
+
+            // Cat spritesheet
+            this.load.spritesheet('cats', './cats-spritesheet.webp?v=1', { frameWidth: 160, frameHeight: 160 });
+
+            // Star working animation
+            this.load.spritesheet('star_working', './star-working-spritesheet-grid.webp?v=1', { frameWidth: 300, frameHeight: 300 });
+
+            // Sync state animation
+            this.load.spritesheet('sync_anim', './sync-animation-v3-grid.webp?v=1', { frameWidth: 256, frameHeight: 256 });
+
+            // Memo background
+            this.load.image('memo_bg', './memo-bg.webp?v=1');
+
+            // Desk v2
+            this.load.image('desk_v2', './desk-v3.webp?v=1');
+
+            // Flower spritesheet
+            this.load.spritesheet('flowers', './flowers-bloom-v2.webp?v=1', { frameWidth: FLOWERS_FRAME_W, frameHeight: FLOWERS_FRAME_H });
+
+            // Guest/Demo agent sprites
+            this.load.spritesheet('guest_anim_1', './guest_anim_1.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+            this.load.spritesheet('guest_anim_2', './guest_anim_2.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+            this.load.spritesheet('guest_anim_3', './guest_anim_3.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+            this.load.spritesheet('guest_anim_4', './guest_anim_4.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+            this.load.spritesheet('guest_anim_5', './guest_anim_5.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+            this.load.spritesheet('guest_anim_6', './guest_anim_6.webp?v=1', { frameWidth: 32, frameHeight: 32 });
+        }
+
+        function create() {
+            game = this;
+            officeBgSprite = this.add.image(640, 360, 'office_bg');
+
+            // Place furniture: Sofa
+            const sofaShadow = this.add.image(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y, 'sofa_shadow').setOrigin(0.5);
+            sofaShadow.setDepth(9);
+            sofa = this.add.sprite(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y, 'sofa_idle').setOrigin(0.5);
+            sofa.setDepth(10);
+            areas = {
+                door: { x: 640, y: 550 },
+                writing: { x: 320, y: 360 },
+                researching: { x: 320, y: 360 },
+                error: { x: 1066, y: 180 },
+                breakroom: { x: IDLE_SOFA_ANCHOR.x, y: IDLE_SOFA_ANCHOR.y }
+            };
+
+            // Star idle animation
+            const starIdleFrameMax = Math.max(0, (this.textures.get('star_idle')?.frameTotal || 1) - 1);
+            if (this.anims.exists('star_idle')) {
+                this.anims.remove('star_idle');
+            }
+            this.anims.create({
+                key: 'star_idle',
+                frames: this.anims.generateFrameNumbers('star_idle', { start: 0, end: starIdleFrameMax }),
+                frameRate: 12,
+                repeat: -1
+            });
+
+            // Guest idle animations (6 agents, 8 frames each)
+            for (let i = 1; i <= 6; i++) {
+                this.anims.create({
+                    key: `guest_anim_${i}_idle`,
+                    frames: this.anims.generateFrameNumbers(`guest_anim_${i}`, { start: 0, end: 7 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            star = game.physics.add.sprite(areas.breakroom.x, areas.breakroom.y, 'star_idle');
+            star.setOrigin(0.5);
+            star.setScale(IDLE_STAR_SCALE);
+            star.setAlpha(0.95);
+            star.setDepth(20);
+            star.setVisible(true);
+            star.anims.play('star_idle', true);
+
+            sofa.anims.stop();
+            sofa.setTexture('sofa_idle');
+
+            // Plaque
+            const plaqueX = config.width / 2;
+            const plaqueY = config.height - 36;
+            const plaqueBg = game.add.rectangle(plaqueX, plaqueY, 420, 44, 0x5d4037);
+            plaqueBg.setStrokeStyle(3, 0x3e2723);
+            const plaqueText = game.add.text(plaqueX, plaqueY, t('officeTitle'), {
+                fontFamily: 'ArkPixel, monospace',
+                fontSize: '18px',
+                fill: '#ffd700',
+                fontWeight: '900',
+                fontStyle: 'bold',
+                stroke: '#000',
+                strokeThickness: 3,
+                wordWrap: { width: 400 },
+                align: 'center'
+            }).setOrigin(0.5);
+            game.add.text(plaqueX - 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
+            game.add.text(plaqueX + 190, plaqueY, '⭐', { fontFamily: 'ArkPixel, monospace', fontSize: '20px' }).setOrigin(0.5);
+            window.officePlaqueText = plaqueText;
+
+            // Random plant at (565,178)
+            const plantFrameCount = 16;
+            const randomPlantFrame = Math.floor(Math.random() * plantFrameCount);
+            const plant = game.add.sprite(565, 178, 'plants', randomPlantFrame).setOrigin(0.5);
+            plant.setDepth(5);
+            plant.setInteractive({ useHandCursor: true });
+            window.plantSprite = plant;
+            window.plantFrameCount = plantFrameCount;
+            plant.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.plantFrameCount);
+                window.plantSprite.setFrame(next);
+            });
+
+            // Random plant at (230,185)
+            const plant2Frame = Math.floor(Math.random() * plantFrameCount);
+            const plant2 = game.add.sprite(230, 185, 'plants', plant2Frame).setOrigin(0.5);
+            plant2.setDepth(5);
+            plant2.setInteractive({ useHandCursor: true });
+            window.plantSprite2 = plant2;
+            plant2.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.plantFrameCount);
+                window.plantSprite2.setFrame(next);
+            });
+
+            // Random plant at (977,496)
+            const plant3Frame = Math.floor(Math.random() * plantFrameCount);
+            const plant3 = game.add.sprite(977, 496, 'plants', plant3Frame).setOrigin(0.5);
+            plant3.setDepth(5);
+            plant3.setInteractive({ useHandCursor: true });
+            window.plantSprite3 = plant3;
+            plant3.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.plantFrameCount);
+                window.plantSprite3.setFrame(next);
+            });
+
+            // Random poster at (252,66)
+            const postersFrameCount = (this.textures.get('posters')?.frameTotal || 1) - 1;
+            const randomPosterFrame = Math.floor(Math.random() * Math.max(1, postersFrameCount));
+            const poster = game.add.sprite(252, 66, 'posters', randomPosterFrame).setOrigin(0.5);
+            poster.setDepth(4);
+            poster.setInteractive({ useHandCursor: true });
+            window.posterSprite = poster;
+            window.posterFrameCount = postersFrameCount;
+            poster.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.posterFrameCount);
+                window.posterSprite.setFrame(next);
+            });
+
+            // Random cat at (94,557)
+            const catsFrameCount = (this.textures.get('cats')?.frameTotal || 1) - 1;
+            const randomCatFrame = Math.floor(Math.random() * Math.max(1, catsFrameCount));
+            const cat = game.add.sprite(94, 557, 'cats', randomCatFrame).setOrigin(0.5);
+            cat.setDepth(2000);
+            cat.setInteractive({ useHandCursor: true });
+            window.catSprite = cat;
+            window.catsFrameCount = catsFrameCount;
+            cat.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.catsFrameCount);
+                window.catSprite.setFrame(next);
+            });
+
+            // Coffee machine at (659,397)
+            const coffeeMachineShadow = this.add.image(659, 397, 'coffee_machine_shadow').setOrigin(0.5);
+            coffeeMachineShadow.setDepth(98);
+            const coffeeFrameMax = Math.max(0, (this.textures.get('coffee_machine')?.frameTotal || 1) - 2);
+            if (this.anims.exists('coffee_machine')) {
+                this.anims.remove('coffee_machine');
+            }
+            this.anims.create({
+                key: 'coffee_machine',
+                frames: this.anims.generateFrameNumbers('coffee_machine', { start: 0, end: coffeeFrameMax }),
+                frameRate: 12.5,
+                repeat: -1
+            });
+            const coffeeMachine = this.add.sprite(659, 397, 'coffee_machine').setOrigin(0.5);
+            coffeeMachine.setDepth(99);
+            coffeeMachine.anims.play('coffee_machine', true);
+
+            // Server room animation
+            const serverFrameMax = Math.max(0, (this.textures.get('serverroom')?.frameTotal || 1) - 2);
+            this.anims.create({
+                key: 'serverroom_on',
+                frames: this.anims.generateFrameNumbers('serverroom', { start: 0, end: serverFrameMax }),
+                frameRate: 6,
+                repeat: -1
+            });
+            serverroom = this.add.sprite(1021, 142, 'serverroom', 0).setOrigin(0.5);
+            serverroom.setDepth(2);
+            serverroom.anims.stop();
+            serverroom.setFrame(0);
+
+            // Desk at (218,417)
+            const desk = this.add.image(218, 417, 'desk_v2').setOrigin(0.5);
+            desk.setDepth(1001);
+
+            // Random flower pot at (310,390)
+            const flowerFrameCount = Math.max(1, FLOWERS_FRAME_COLS * FLOWERS_FRAME_ROWS);
+            const randomFlowerFrame = Math.floor(Math.random() * flowerFrameCount);
+            const flower = this.add.sprite(310, 390, 'flowers', randomFlowerFrame).setOrigin(0.5);
+            flower.setScale(0.8);
+            flower.setDepth(1100);
+            flower.setInteractive({ useHandCursor: true });
+            window.flowerSprite = flower;
+            window.flowerFrameCount = flowerFrameCount;
+            flower.on('pointerdown', () => {
+                const next = Math.floor(Math.random() * window.flowerFrameCount);
+                window.flowerSprite.setFrame(next);
+            });
+
+            // Star working animation at desk (217,333)
+            this.anims.create({
+                key: 'star_working',
+                frames: this.anims.generateFrameNumbers('star_working', { start: 0, end: 37 }),
+                frameRate: 12,
+                repeat: -1
+            });
+
+            // Error bug animation (96 frames)
+            this.anims.create({
+                key: 'error_bug',
+                frames: this.anims.generateFrameNumbers('error_bug', { start: 0, end: 71 }),
+                frameRate: 12,
+                repeat: -1
+            });
+
+            // Error bug character
+            const errorBug = this.add.sprite(1007, 221, 'error_bug', 0).setOrigin(0.5);
+            errorBug.setDepth(50);
+            errorBug.setVisible(false);
+            errorBug.setScale(0.9);
+            errorBug.anims.play('error_bug', true);
+            window.errorBug = errorBug;
+            window.errorBugDir = 1;
+
+            const starWorking = this.add.sprite(217, 343, 'star_working', 0).setOrigin(0.5);
+            starWorking.setVisible(false);
+            starWorking.setScale(0.9);
+            starWorking.setDepth(900);
+            window.starWorking = starWorking;
+
+            // Sync animation sprite at (1157,592)
+            const syncFrameTotal = Number(this.textures.get('sync_anim')?.frameTotal || 0);
+            const syncFrameStart = 1;
+            const syncFrameEnd = Math.max(0, syncFrameTotal - 2);
+            syncAnimPlayable = syncFrameTotal >= 3 && syncFrameEnd >= syncFrameStart;
+            if (this.anims.exists('sync_anim')) {
+                this.anims.remove('sync_anim');
+            }
+            if (syncAnimPlayable) {
+                this.anims.create({
+                    key: 'sync_anim',
+                    frames: this.anims.generateFrameNumbers('sync_anim', { start: syncFrameStart, end: syncFrameEnd }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+            syncAnimSprite = this.add.sprite(1157, 592, 'sync_anim', 0).setOrigin(0.5);
+            syncAnimSprite.setDepth(40);
+            syncAnimSprite.anims.stop();
+            syncAnimSprite.setFrame(0);
+
+            window.starSprite = star;
+
+            statusText = document.getElementById('status-text');
+            positionStatusText();
+            window.addEventListener('resize', positionStatusText);
+            window.addEventListener('scroll', positionStatusText, { passive: true });
+
+            // Camera panning
+            const panToggle = document.getElementById('pan-toggle');
+            const isTouchDevice = IS_TOUCH_DEVICE;
+            let panEnabled = false;
+            let isPanning = false;
+            let panStart = null;
+            const camera = game.cameras.main;
+
+            const MAP_W = config.width;
+            const MAP_H = config.height;
+            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+            function maxScrollX() {
+                const viewportW = camera.width / Math.max(0.01, camera.zoom);
+                return Math.max(0, MAP_W - viewportW);
+            }
+            function maxScrollY() {
+                const viewportH = camera.height / Math.max(0.01, camera.zoom);
+                return Math.max(0, MAP_H - viewportH);
+            }
+            function clampCameraScroll() {
+                camera.scrollX = clamp(camera.scrollX, 0, maxScrollX());
+                camera.scrollY = clamp(camera.scrollY, 0, maxScrollY());
+            }
+
+            let hasManuallyPanned = false;
+            function applyMobileCameraFit() {
+                if (!isTouchDevice) return;
+                const h = Math.max(1, camera.height);
+                const w = Math.max(1, camera.width);
+                const fitHeightZoom = h / MAP_H;
+                const candidateZoom = fitHeightZoom;
+                const viewW = w / candidateZoom;
+                const maxX = Math.max(0, MAP_W - viewW);
+                camera.setZoom(candidateZoom);
+                camera.scrollX = Math.min(camera.scrollX, maxX);
+                camera.scrollY = 0;
+                if (!hasManuallyPanned) {
+                    camera.centerOn(MAP_W / 2, MAP_H / 2);
+                }
+                camera.scrollX = clamp(camera.scrollX, 0, maxX);
+                camera.scrollY = 0;
+            }
+            applyMobileCameraFit();
+
+            if (isTouchDevice && game.scale) {
+                game.scale.on('resize', () => {
+                    applyMobileCameraFit();
+                    positionStatusText();
+                });
+            }
+
+            camera.setBounds(0, 0, MAP_W, MAP_H);
+            clampCameraScroll();
+
+            function setPanEnabled(on) {
+                panEnabled = on;
+                if (panToggle) {
+                    panToggle.dataset.on = on ? '1' : '0';
+                    panToggle.textContent = on ? t('lockView') : t('moveView');
+                    panToggle.style.background = on ? '#e94560' : '#333';
+                }
+                game.input.setDefaultCursor(on ? 'grab' : 'default');
+                if (isTouchDevice && statusText) {
+                    const info = on ? '视野拖动已开启（可左右拖动画布）' : '视野拖动已关闭（点击左上角"移动视野"可开启）';
+                    statusText.textContent = `状态：[${(STATES[currentState] && STATES[currentState].name) || '待命'}] ${info}`;
+                }
+            }
+
+            if (panToggle) {
+                panToggle.addEventListener('click', () => setPanEnabled(!panEnabled));
+            }
+
+            if (isTouchDevice) {
+                setPanEnabled(false);
+            }
+
+            // iOS/Safari touch panning
+            const canvasEl = game.canvas;
+            let touchPan = null;
+            if (canvasEl) {
+                canvasEl.style.touchAction = 'auto';
+
+                canvasEl.addEventListener('touchstart', (e) => {
+                    if (!panEnabled || e.touches.length !== 1) return;
+                    const t = e.touches[0];
+                    touchPan = { x: t.clientX, y: t.clientY, sx: camera.scrollX, sy: camera.scrollY, lock: null };
+                }, { passive: true });
+
+                canvasEl.addEventListener('touchmove', (e) => {
+                    if (!panEnabled || !touchPan || e.touches.length !== 1) return;
+                    const t = e.touches[0];
+                    const dx = t.clientX - touchPan.x;
+                    const dy = t.clientY - touchPan.y;
+
+                    if (!touchPan.lock) {
+                        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+                        touchPan.lock = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+                    }
+
+                    if (touchPan.lock === 'x') {
+                        e.preventDefault();
+                        hasManuallyPanned = true;
+                        camera.scrollX = clamp(touchPan.sx - dx, 0, maxScrollX());
+                    }
+                }, { passive: false });
+
+                const clearTouchPan = () => { touchPan = null; };
+                canvasEl.addEventListener('touchend', clearTouchPan, { passive: true });
+                canvasEl.addEventListener('touchcancel', clearTouchPan, { passive: true });
+            }
+
+            game.input.on('pointerdown', (pointer) => {
+                if (!panEnabled) return;
+                isPanning = true;
+                panStart = { x: pointer.x, y: pointer.y, sx: camera.scrollX, sy: camera.scrollY };
+                game.input.setDefaultCursor('grabbing');
+            });
+
+            game.input.on('pointerup', () => {
+                if (!panEnabled) return;
+                isPanning = false;
+                panStart = null;
+                game.input.setDefaultCursor('grab');
+            });
+
+            game.input.on('pointermove', (pointer) => {
+                if (!panEnabled || !isPanning || !panStart) return;
+                const dx = pointer.x - panStart.x;
+                const dy = pointer.y - panStart.y;
+
+                if (isTouchDevice && Math.abs(dy) > Math.abs(dx)) {
+                    return;
+                }
+
+                const newX = panStart.sx - dx;
+                hasManuallyPanned = true;
+                camera.scrollX = clamp(newX, 0, maxScrollX());
+
+                if (!isTouchDevice) {
+                    const newY = panStart.sy - dy;
+                    camera.scrollY = clamp(newY, 0, maxScrollY());
+                }
+            });
+
+            // Initialize demo visitors
+            ensureDemoVisitors();
+            renderGuestAgentsInScene();
+        }
+
+        function update(time) {
+            // Server room animation control
+            const effectiveStateForServer = pendingDesiredState || currentState;
+            if (serverroom) {
+                if (effectiveStateForServer === 'idle') {
+                    if (serverroom.anims.isPlaying) {
+                        serverroom.anims.stop();
+                        serverroom.setFrame(0);
+                    }
+                } else {
+                    if (!serverroom.anims.isPlaying || serverroom.anims.currentAnim?.key !== 'serverroom_on') {
+                        serverroom.anims.play('serverroom_on', true);
+                    }
+                }
+            }
+
+            // Error bug
+            if (window.errorBug) {
+                if (effectiveStateForServer === 'error') {
+                    window.errorBug.setVisible(true);
+                    if (!window.errorBug.anims.isPlaying || window.errorBug.anims.currentAnim?.key !== 'error_bug') {
+                        window.errorBug.anims.play('error_bug', true);
+                    }
+                    window.errorBug.x = 1007;
+                    window.errorBug.y = 221;
+                } else {
+                    window.errorBug.setVisible(false);
+                    window.errorBug.anims.stop();
+                }
+            }
+
+            // Sync animation
+            if (syncAnimSprite) {
+                if (effectiveStateForServer === 'syncing') {
+                    if (syncAnimPlayable && syncAnimSprite.anims && syncAnimSprite.anims.play && syncAnimSprite.scene?.anims?.exists('sync_anim')) {
+                        if (!syncAnimSprite.anims.isPlaying || syncAnimSprite.anims.currentAnim?.key !== 'sync_anim') {
+                            syncAnimSprite.anims.play('sync_anim', true);
+                        }
+                    } else {
+                        syncAnimSprite.setFrame(0);
+                    }
+                } else {
+                    if (syncAnimSprite.anims && syncAnimSprite.anims.isPlaying) syncAnimSprite.anims.stop();
+                    syncAnimSprite.setFrame(0);
+                }
+            }
+
+            // Bubbles
+            if (time - lastBubble > BUBBLE_INTERVAL) {
+                showBubble();
+                lastBubble = time;
+            }
+            if (time - lastCatBubble > CAT_BUBBLE_INTERVAL) {
+                showCatBubble();
+                lastCatBubble = time;
+            }
+
+            // Typewriter
+            if (typewriterIndex < typewriterTarget.length && time - lastTypewriter > TYPEWRITER_DELAY) {
+                typewriterText += typewriterTarget[typewriterIndex];
+                statusText.textContent = typewriterText;
+                typewriterIndex++;
+                lastTypewriter = time;
+            }
+
+            // Movement
+            moveStar(time);
+
+            // Guest demo randomization
+            maybeRandomizeDemoVisitors();
+
+            // Guest bubbles
+            maybeShowGuestBubble(time);
+
+            // Guest bubble follow (for demo smooth movement)
+            try {
+                Object.keys(guestBubbles).forEach(id => {
+                    const b = guestBubbles[id];
+                    const g = guestSprites[id];
+                    if (!b || !g) return;
+                    if (b.__followAgentId !== id) return;
+                    b.x = 0;
+                    b.y = 0;
+                    const bx = g.sprite.x;
+                    const isDemoGuest = (id === 'demo_nika' || id === 'demo_mercury');
+                    const nameH = (g.nameText && g.nameText.height) ? g.nameText.height : 16;
+                    const by = isDemoGuest ? (g.sprite.y - 90) : ((g.nameText ? g.nameText.y : (g.sprite.y - 150)) - (nameH / 2) - 22);
+                    if (b.list && b.list[0]) { b.list[0].x = bx; b.list[0].y = by; }
+                    if (b.list && b.list[1]) { b.list[1].x = bx; b.list[1].y = by; }
+                });
+            } catch (e) {}
+        }
+
+        function moveStar(time) {
+            const effectiveState = pendingDesiredState || currentState;
+            const stateInfo = STATES[effectiveState] || STATES.idle;
+            const baseTarget = areas[stateInfo.area] || areas.breakroom;
+
+            if (effectiveState === 'idle') {
+                if (star && star.visible) {
+                    star.setPosition(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y);
+                }
+                isMoving = false;
+                return;
+            }
+
+            const dx = targetX - star.x;
+            const dy = targetY - star.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 1.4;
+            const wobble = Math.sin(time / 200) * 0.8;
+
+            if (dist > 3) {
+                star.x += (dx / dist) * speed;
+                star.y += (dy / dist) * speed;
+                star.setY(star.y + wobble);
+                isMoving = true;
+            } else {
+                if (waypoints && waypoints.length > 0) {
+                    waypoints.shift();
+                    if (waypoints.length > 0) {
+                        targetX = waypoints[0].x;
+                        targetY = waypoints[0].y;
+                        isMoving = true;
+                    } else {
+                        if (pendingDesiredState !== null) {
+                            isMoving = false;
+                            currentState = pendingDesiredState;
+                            pendingDesiredState = null;
+
+                            if (currentState === 'idle') {
+                                if (window.starWorking) {
+                                    window.starWorking.setVisible(false);
+                                    window.starWorking.anims.stop();
+                                }
+                                star.setVisible(true);
+                                star.setScale(IDLE_STAR_SCALE);
+                                star.anims.play('star_idle', true);
+                                star.setPosition(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y);
+                                sofa.anims.stop();
+                                sofa.setTexture('sofa_idle');
+                            } else {
+                                star.setVisible(false);
+                                star.anims.stop();
+                                if (window.starWorking) {
+                                    window.starWorking.setVisible(true);
+                                    window.starWorking.anims.play('star_working', true);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (pendingDesiredState !== null) {
+                        isMoving = false;
+                        currentState = pendingDesiredState;
+                        pendingDesiredState = null;
+
+                        if (currentState === 'idle') {
+                            if (window.starWorking) {
+                                window.starWorking.setVisible(false);
+                                window.starWorking.anims.stop();
+                            }
+                            star.setVisible(true);
+                            star.setScale(IDLE_STAR_SCALE);
+                            star.anims.play('star_idle', true);
+                            star.setPosition(IDLE_SOFA_ANCHOR.x, IDLE_SOFA_ANCHOR.y);
+                            sofa.anims.stop();
+                            sofa.setTexture('sofa_idle');
+                        } else {
+                            star.setVisible(false);
+                            star.anims.stop();
+                            if (window.starWorking) {
+                                window.starWorking.setVisible(true);
+                                window.starWorking.anims.play('star_working', true);
+                            }
+                            sofa.anims.stop();
+                            sofa.setTexture('sofa_idle');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Listen for state pushes from parent window (lobster-pet React)
+        window.addEventListener('message', (event) => {
+            if (!event || !event.data) return;
+            const { type, state, detail, officeName } = event.data;
+            if (type !== 'lobster-state') return;
+            try {
+                if (officeName && window.officePlaqueText && window.officePlaqueText.setText) {
+                    window.officePlaqueText.setText(officeName);
+                    window.officeNameFromServer = officeName;
+                }
+                const nextState = normalizeState(state);
+                const stateInfo = STATES[nextState] || STATES.idle;
+                pendingDesiredState = null;
+                if (currentState !== nextState) {
+                    currentState = nextState;
+                }
+                applyVisualState(nextState);
+                const nextLine = '[' + stateInfo.name + '] ' + (detail || '...');
+                typewriterTarget = nextLine;
+                typewriterText = '';
+                typewriterIndex = 0;
+            } catch (err) {
+                console.error('postMessage apply error', err);
+            }
+        });
+
+        // Start game
+        new Phaser.Game(config);
+    </script>
+</body>
+</html>

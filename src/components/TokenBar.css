@@ -1,0 +1,12 @@
+.token-label {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 13px;
+  color: rgba(231, 76, 60, 0.9);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}

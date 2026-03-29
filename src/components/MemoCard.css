@@ -1,0 +1,83 @@
+.memo-card { gap: 0; }
+
+.memo-empty {
+  color: var(--text-muted, #555);
+  font-size: 13px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.memo-content {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.7;
+}
+
+.memo-content h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #eee);
+  margin: 8px 0 4px;
+}
+
+.memo-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--info, #4ECDC4);
+  margin: 8px 0 3px;
+}
+
+.memo-content h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  margin: 6px 0 2px;
+}
+
+.memo-content ul, .memo-content ol {
+  margin: 3px 0;
+  padding-left: 18px;
+}
+
+.memo-content li {
+  margin: 2px 0;
+  color: #bbb;
+}
+
+.memo-content p {
+  margin: 2px 0;
+}
+
+.memo-content code {
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--info, #4ECDC4);
+}
+
+.memo-content strong {
+  color: var(--text-primary, #eee);
+  font-weight: 600;
+}
+
+.memo-content em {
+  font-style: italic;
+  color: #bbb;
+}
+
+.memo-content a {
+  color: var(--info, #4ECDC4);
+  text-decoration: none;
+}
+
+.memo-content a:hover {
+  text-decoration: underline;
+}
+
+.memo-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 8px 0;
+}

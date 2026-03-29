@@ -1,0 +1,437 @@
+.lobster-pet {
+  width: 150px;
+  height: 150px;
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+/* Flip for direction */
+.lobster-flip {
+  transform: scaleX(-1);
+}
+
+/* Image container — CSS animations applied here */
+.lobster-image-container {
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lobster-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+/* Background glow */
+.lobster-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160px;
+  height: 160px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(231, 76, 60, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+/* Effect container */
+.effect-container {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  width: 120px;
+  height: 60px;
+}
+
+/* ============================================= */
+/* === IDLE === */
+/* ============================================= */
+.lobster-idle .lobster-image-container {
+  animation: idle-breathe 8s ease-in-out infinite;
+}
+
+@keyframes idle-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ============================================= */
+/* === WORKING (stir-fry) === */
+/* ============================================= */
+.lobster-working .lobster-image-container {
+  animation: working-shake 1.5s ease-in-out infinite;
+}
+
+@keyframes working-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  25% { transform: translateX(-2px) rotate(-8deg); }
+  50% { transform: translateX(0) rotate(0deg); }
+  75% { transform: translateX(2px) rotate(8deg); }
+}
+
+/* Flame particles */
+.flame {
+  position: absolute;
+  border-radius: 50%;
+  animation: flame-rise 1s ease-out infinite;
+}
+
+.flame.f1 { width: 6px; height: 6px; left: 20px; background: rgba(255, 120, 50, 0.8); animation-delay: 0s; }
+.flame.f2 { width: 8px; height: 8px; left: 40px; background: rgba(255, 80, 30, 0.8); animation-delay: 0.2s; }
+.flame.f3 { width: 5px; height: 5px; left: 60px; background: rgba(255, 160, 50, 0.8); animation-delay: 0.4s; }
+.flame.f4 { width: 7px; height: 7px; left: 80px; background: rgba(255, 100, 40, 0.8); animation-delay: 0.6s; }
+.flame.f5 { width: 6px; height: 6px; left: 100px; background: rgba(255, 140, 60, 0.8); animation-delay: 0.8s; }
+
+@keyframes flame-rise {
+  0% { transform: translateY(50px) scale(1); opacity: 0.9; }
+  100% { transform: translateY(-20px) scale(0.3); opacity: 0; }
+}
+
+/* Steam bubbles */
+.steam-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  animation: steam-rise 1.5s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.steam-bubble.s1 { width: 8px; height: 8px; left: 30px; animation-delay: 0s; }
+.steam-bubble.s2 { width: 6px; height: 6px; left: 70px; animation-delay: 0.7s; }
+
+@keyframes steam-rise {
+  0% { transform: translateY(40px) scale(1); opacity: 0.6; }
+  100% { transform: translateY(-30px) scale(1.5); opacity: 0; }
+}
+
+/* ============================================= */
+/* === ERROR === */
+/* ============================================= */
+.lobster-error .lobster-image-container {
+  animation: error-shake 0.6s ease-in-out infinite;
+}
+
+.lobster-error .lobster-img {
+  filter: brightness(0.7) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-2deg); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px) rotate(2deg); }
+}
+
+.smoke-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(100, 100, 100, 0.5);
+  animation: smoke-rise 2s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.smoke-bubble.sm1 { width: 8px; height: 8px; left: 15px; animation-delay: 0s; }
+.smoke-bubble.sm2 { width: 10px; height: 10px; left: 50px; animation-delay: 0.5s; }
+.smoke-bubble.sm3 { width: 7px; height: 7px; left: 85px; animation-delay: 1s; }
+.smoke-bubble.sm4 { width: 9px; height: 9px; left: 65px; animation-delay: 1.5s; }
+
+@keyframes smoke-rise {
+  0% { transform: translateY(40px) scale(1); opacity: 0.6; }
+  100% { transform: translateY(-25px) scale(2.5); opacity: 0; }
+}
+
+/* ============================================= */
+/* === THINKING === */
+/* ============================================= */
+.lobster-thinking .lobster-image-container {
+  animation: thinking-tilt 6s ease-in-out infinite;
+}
+
+@keyframes thinking-tilt {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-5deg); }
+}
+
+/* Thinking dots animation */
+.thinking-dots {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+}
+
+.thinking-dots .dot {
+  font-size: 18px;
+  font-weight: 900;
+  color: #F39C12;
+  animation: dot-blink 1.5s ease-in-out infinite;
+}
+
+.thinking-dots .d1 { animation-delay: 0s; }
+.thinking-dots .d2 { animation-delay: 0.3s; }
+.thinking-dots .d3 { animation-delay: 0.6s; }
+
+@keyframes dot-blink {
+  0%, 60%, 100% { opacity: 0.2; }
+  30% { opacity: 1; }
+}
+
+/* Lightbulb */
+.lightbulb {
+  position: absolute;
+  top: -5px;
+  right: 10px;
+  font-size: 16px;
+  animation: lightbulb-flash 4s ease-in-out infinite;
+}
+
+@keyframes lightbulb-flash {
+  0%, 70%, 100% { opacity: 0; transform: scale(0.8); }
+  80% { opacity: 1; transform: scale(1.2); }
+  90% { opacity: 0.8; transform: scale(1); }
+}
+
+/* ============================================= */
+/* === SLEEPING === */
+/* ============================================= */
+.lobster-sleeping .lobster-image-container {
+  animation: sleeping-lie 8s ease-in-out infinite;
+}
+
+@keyframes sleeping-lie {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(15deg) translateY(10px); }
+}
+
+/* Zzz floating */
+.zzz {
+  position: absolute;
+  font-weight: bold;
+  color: rgba(187, 143, 206, 0.9);
+  animation: zzz-float 3s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.zzz.z1 { font-size: 14px; left: 60px; top: 0; animation-delay: 0s; }
+.zzz.z2 { font-size: 11px; left: 75px; top: -5px; animation-delay: 0.8s; }
+.zzz.z3 { font-size: 8px; left: 85px; top: -10px; animation-delay: 1.6s; }
+
+@keyframes zzz-float {
+  0% { transform: translateY(0) translateX(0); opacity: 0.9; }
+  100% { transform: translateY(-25px) translateX(8px); opacity: 0; }
+}
+
+/* Sleep bubbles from mouth */
+.sleep-bubble {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(187, 143, 206, 0.5);
+  background: transparent;
+  animation: sleep-bubble-rise 4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.sleep-bubble.b1 { width: 6px; height: 6px; left: 50px; top: 30px; animation-delay: 0s; }
+.sleep-bubble.b2 { width: 8px; height: 8px; left: 55px; top: 35px; animation-delay: 1.3s; }
+.sleep-bubble.b3 { width: 5px; height: 5px; left: 48px; top: 32px; animation-delay: 2.6s; }
+
+@keyframes sleep-bubble-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  100% { transform: translateY(-35px) scale(1.8); opacity: 0; }
+}
+
+/* ============================================= */
+/* === HAPPY === */
+/* ============================================= */
+.lobster-happy .lobster-image-container {
+  animation: happy-jump 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+@keyframes happy-jump {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-15px); }
+  60% { transform: translateY(-15px); }
+}
+
+.star {
+  position: absolute;
+  font-size: 12px;
+  color: #F1C40F;
+  animation: star-burst 1.2s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+.star.st1 { top: 5px; left: 10px; animation-delay: 0s; }
+.star.st2 { top: -5px; left: 40px; animation-delay: 0.15s; }
+.star.st3 { top: 0; left: 70px; animation-delay: 0.3s; }
+.star.st4 { top: 10px; left: 95px; animation-delay: 0.45s; }
+.star.st5 { top: -2px; left: 55px; animation-delay: 0.6s; }
+
+@keyframes star-burst {
+  0% { transform: scale(0) rotate(0deg); opacity: 1; }
+  40% { transform: scale(1.3) rotate(90deg); opacity: 0.9; }
+  100% { transform: scale(0) rotate(180deg); opacity: 0; }
+}
+
+/* ============================================= */
+/* === RANDOM IDLE ACTIONS === */
+/* ============================================= */
+
+/* Spin — full rotation (1.5s) */
+.lobster-spin .lobster-image-container {
+  animation: action-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+}
+
+@keyframes action-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Bounce — hop up and down (1.8s) */
+.lobster-bounce .lobster-image-container {
+  animation: action-bounce 1.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) !important;
+}
+
+@keyframes action-bounce {
+  0%, 100% { transform: translateY(0) scaleY(1) scaleX(1); }
+  25% { transform: translateY(-22px) scaleY(1.1) scaleX(0.95); }
+  40% { transform: translateY(0) scaleY(0.85) scaleX(1.1); }
+  55% { transform: translateY(-14px) scaleY(1.05) scaleX(0.98); }
+  70% { transform: translateY(0) scaleY(0.92) scaleX(1.05); }
+  82% { transform: translateY(-6px) scaleY(1.02) scaleX(0.99); }
+}
+
+/* Wiggle — shake side to side (1s) */
+.lobster-wiggle .lobster-image-container {
+  animation: action-wiggle 0.9s ease-in-out !important;
+}
+
+@keyframes action-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-14deg); }
+  24% { transform: rotate(12deg); }
+  36% { transform: rotate(-10deg); }
+  48% { transform: rotate(8deg); }
+  60% { transform: rotate(-5deg); }
+  72% { transform: rotate(3deg); }
+  84% { transform: rotate(-1deg); }
+}
+
+/* Look around — subtle head tilt (0.8s) */
+.lobster-look-around .lobster-image-container {
+  animation: action-look 1.2s ease-in-out !important;
+}
+
+@keyframes action-look {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(-10deg) scale(1.03); }
+  35% { transform: rotate(0deg) scale(1); }
+  55% { transform: rotate(10deg) scale(1.03); }
+  75% { transform: rotate(0deg) scale(1); }
+}
+
+/* Stretch — squeeze and expand (2s) */
+.lobster-stretch .lobster-image-container {
+  animation: action-stretch 1.8s ease-in-out !important;
+}
+
+@keyframes action-stretch {
+  0%, 100% { transform: scaleY(1) scaleX(1); }
+  20% { transform: scaleY(1.18) scaleX(0.86); }
+  40% { transform: scaleY(0.88) scaleX(1.14); }
+  60% { transform: scaleY(1.1) scaleX(0.92); }
+  80% { transform: scaleY(0.95) scaleX(1.04); }
+}
+
+/* Talk — small pulse (bubble shown separately) */
+.lobster-talk .lobster-image-container {
+  animation: action-talk 1s ease-in-out !important;
+}
+
+@keyframes action-talk {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.08); }
+  30% { transform: scale(0.95); }
+  45% { transform: scale(1.06); }
+  60% { transform: scale(0.97); }
+  75% { transform: scale(1.03); }
+}
+
+/* Action icon (spin/stretch emoji) */
+.action-icon {
+  position: absolute;
+  font-size: 16px;
+  animation: icon-pop 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+.spin-icon {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.stretch-icon {
+  top: -8px;
+  right: 5px;
+}
+
+@keyframes icon-pop {
+  0% { transform: scale(0) translateY(0); opacity: 0; }
+  50% { transform: scale(1.3) translateY(-5px); opacity: 1; }
+  100% { transform: scale(1) translateY(-10px); opacity: 0; }
+}
+
+/* Random chatter bubble */
+.random-chatter-bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  background: rgba(30, 30, 50, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+  animation: chatter-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.random-chatter-bubble span {
+  color: #eee;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.chatter-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: rgba(30, 30, 50, 0.92);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+@keyframes chatter-pop {
+  from { transform: translateX(-50%) scale(0.6); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}

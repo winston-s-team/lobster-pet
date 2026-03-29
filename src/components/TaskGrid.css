@@ -1,0 +1,91 @@
+.task-grid { gap: 0; }
+
+.tg-count {
+  font-size: 15px;
+  color: var(--text-muted, #555);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.task-empty {
+  color: var(--text-muted, #555);
+  font-size: 15px;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.task-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 5px;
+}
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+
+.task-card:hover { background: rgba(255, 255, 255, 0.06); }
+
+.task-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-card-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.task-card-name {
+  font-size: 15px;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-running {
+  color: var(--success, #2ECC71);
+  font-size: 15px;
+  animation: dot-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.task-card-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 17px; /* align with name after icon */
+}
+
+.task-card-channel {
+  font-size: 15px;
+  color: var(--info, #4ECDC4);
+  background: rgba(78, 205, 196, 0.1);
+  padding: 0 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  text-transform: capitalize;
+}
+
+.task-card-age {
+  font-size: 15px;
+  color: var(--text-muted, #555);
+}
+
+.task-card-tokens {
+  font-size: 15px;
+  color: var(--accent, #E74C3C);
+  margin-left: auto;
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}

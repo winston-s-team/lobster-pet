@@ -1,0 +1,31 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+# Backup files
+*.bak*
+# Vite cache
+*.vite/
+# Star-Office-UI originals (not needed, index.html is the cleaned version)
+public/office/game.js
+public/office/layout.js
+public/office/invite.html
+public/office/join.html
+public/office/electron-standalone.html
+public/office/office-agent-push.py
+public/office/join-office-skill.md
+public/office/btn-back-home-sprite.png
+public/office/btn-broker-sprite.png
+public/office/btn-diy-sprite.png
+public/office/btn-move-house-sprite.png
+public/office/btn-open-drawer-sprite.png
+public/office/btn-state-sprite.png
+# Duplicate office assets (already in public/office/)
+src/assets/office/
+# Font zip
+public/office/fonts/ark-pixel-font-12px-proportional-ttf.woff2-v2025.10.20.zip

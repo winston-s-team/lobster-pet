@@ -1,0 +1,98 @@
+.ga-card { gap: 0; }
+
+.ga-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.ga-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ga-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success, #2ECC71);
+  margin-bottom: 3px;
+}
+
+.ga-dot.ga-offline { background: var(--error, #E74C3C); }
+.ga-dot.ga-idle { background: var(--text-muted, #555); }
+
+.ga-stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #eee);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
+
+.ga-stat-label {
+  font-size: 8px;
+  color: var(--text-muted, #555);
+}
+
+.ga-chip {
+  font-size: 8px;
+  color: var(--info, #4ECDC4);
+  background: rgba(78, 205, 196, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.ga-agents {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ga-agent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+
+.ga-agent:hover { background: rgba(255, 255, 255, 0.06); }
+
+.ga-agent.ga-active {
+  border-color: rgba(46, 204, 113, 0.2);
+  background: rgba(46, 204, 113, 0.04);
+}
+
+.ga-agent-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ga-agent-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ga-agent-meta {
+  font-size: 9px;
+  color: var(--text-muted, #555);
+  font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+}
