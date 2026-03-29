@@ -4,7 +4,7 @@
 
 OpenClaw 桌面宠物 + 运营监控看板。灵感来自瑞星小狮子，主角换成小龙虾，实时监控 OpenClaw Agent 运行状态。
 
-![龙虾办公室](截图.png)
+![Lobster Dashboard](screenshot.png)
 
 ## ✨ 功能特性
 
